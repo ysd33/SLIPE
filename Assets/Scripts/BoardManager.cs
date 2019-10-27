@@ -44,6 +44,8 @@ public class BoardManager : MonoBehaviour
         DrawSLIPESBoard();
         UpdateSelection();
 
+        Inputflick.Instance.Flick();
+
         if (Input.GetMouseButtonDown(0) && !movingFlag)
         {
             if (selectionX >= 0 && selectionY >= 0)
