@@ -13,8 +13,16 @@ public class BoardManager : MonoBehaviour
     private const float TILE_SIZE = 1.0f;
     private const float TILE_OFFSET = 0.5f;
 
+    private float mousePosX = -1;
+    private float mousePosY = -1;
     private int selectionX = -1;
     private int selectionY = -1;
+    public float[] Getselection()
+    {
+        float[]  selection = { mousePosX, mousePosY };
+        return selection;
+    }
+
 
     public List<GameObject> piecePrefabs;
     private List<GameObject> activePiece = new List<GameObject>();
@@ -26,13 +34,21 @@ public class BoardManager : MonoBehaviour
     private float piecePositionY = -0.21f;
     private Quaternion orientation = Quaternion.Euler(-90, 0, 0);
 
+    // Controll
     public bool isLightTurn = true;
+    public bool touchingFlag = false;
+    string direction = null;
 
     // Animation
     public bool movingFlag = false;
     public Vector3 target;
     public Vector3 moveVector;
 
+
+
+    //==============================
+    //  Functions
+    //==============================
     private void Start()
     {
         Instance = this;
@@ -45,40 +61,53 @@ public class BoardManager : MonoBehaviour
         UpdateSelection();
 
         Inputflick.Instance.Flick();
+        direction = Inputflick.Instance.Getdirection();
 
-        if (Input.GetMouseButtonDown(0) && !movingFlag)
-        {
-            if (selectionX >= 0 && selectionY >= 0)
+        if (direction != null) {
+            if (direction == "touch" && !movingFlag)
             {
-                if (selectedPiece == null)
+                if (selectionX >= 0 && selectionY >= 0)
                 {
-                    //Select the piece
-                    SelectPiece(selectionX, selectionY);
+                    if (selectedPiece == null)
+                    {
+                        //Select the piece
+                        SelectPiece(selectionX, selectionY);
+                    }
+                    else
+                    {
+                        //Move the piece
+                        MovePiece(selectionX, selectionY);
+                    }
                 }
-                else
+
+                touchingFlag = !touchingFlag;
+            }
+            else if (direction != "touch" && !movingFlag && !touchingFlag)
+            {
+                float[] startPos = Inputflick.Instance.GettouchStartPos();
+                Debug.Log(startPos[0]);
+                Debug.Log(startPos[1]);
+                if(startPos[0] >= 0 && startPos[1] >= 0)
                 {
-                    //Move the piece
-                    MovePiece(selectionX, selectionY);
+                    SelectPiece((int)startPos[0], (int)startPos[1]);
+
+                    if(selectedPiece != null)
+                    {
+                        int[] destinationPos = GetDestination();
+                        MovePiece(destinationPos[0], destinationPos[1]);
+                    }
                 }
             }
         }
         else if (movingFlag)
         {
-            if(target == selectedPiece.transform.position)
+            if (target == selectedPiece.transform.position)
             {
-                movingFlag = false;
-                selectedPiece = null;
-
-                // Check End Game
-                if (Pieces[2, 2])
-                {
-                    EndGame();
-                }
-
-                isLightTurn = !isLightTurn;
+                SwitchTurn();
             }
             else
             {
+                // Moving Piece
                 selectedPiece.transform.position += moveVector * -0.1f;
             }
         }
@@ -106,10 +135,7 @@ public class BoardManager : MonoBehaviour
 
         selectedPiece = Pieces[x, y];
 
-        // Change Material
-        previousMat = selectedPiece.GetComponent<MeshRenderer>().material;
-        selectedMat.mainTexture = previousMat.mainTexture;
-        selectedPiece.GetComponent<MeshRenderer>().material = selectedMat;
+        SwitchSelectedMaterial();
 
         BoardHighlights.Instance.HighLightAllowedmoves(allowedMoves);
     }
@@ -149,20 +175,24 @@ public class BoardManager : MonoBehaviour
         if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 25.0f, LayerMask.GetMask("SLIPESPlane")))
         {
             //Debug.Log(hit.point);
-            selectionX = (int)hit.point.x;
-            selectionY = (int)hit.point.z;
+            mousePosX = hit.point.x;
+            mousePosY = hit.point.z;
+            selectionX = (int)mousePosX;
+            selectionY = (int)mousePosY;
         }
         else
         {
+            mousePosX = -1;
+            mousePosY = -1;
             selectionX = -1;
             selectionY = -1;
         }
 
     }
 
-    //==============================
+    //------------------------------
     //  SpawnPieces
-    //==============================
+    //------------------------------
     private void SpawnPiece(int index, int x, int y)
     {
         GameObject go = Instantiate(piecePrefabs[index], GetTileCenter(x, y), orientation) as GameObject;
@@ -242,6 +272,105 @@ public class BoardManager : MonoBehaviour
         }
     }
 
+    private void SwitchSelectedMaterial()
+    {
+        // Change Material
+        previousMat = selectedPiece.GetComponent<MeshRenderer>().material;
+        selectedMat.mainTexture = previousMat.mainTexture;
+        selectedPiece.GetComponent<MeshRenderer>().material = selectedMat;
+    }
+
+    private int[] GetDestination()
+    {
+        int i;
+        int[] destinationPos = { selectedPiece.CurrentX, selectedPiece.CurrentY };
+
+        switch(direction){
+            // Right
+            case "right":
+                i = selectedPiece.CurrentX + 1;
+                while(true)
+                {
+                    if(i >= 5)
+                        break;
+
+                    if (allowedMoves[i,selectedPiece.CurrentY])
+                    {
+                        destinationPos[0] = i;
+                        break;
+                    }
+                    i++;
+                }
+                break;
+
+            // Left
+            case "left":
+                i = selectedPiece.CurrentX - 1;
+                while(true)
+                {
+                    if(i < 0)
+                        break;
+
+                    if (allowedMoves[i,selectedPiece.CurrentY])
+                    {
+                        destinationPos[0] = i;
+                        break;
+                    }
+                    i--;
+                }
+                break;
+
+            // Up
+            case "up":
+                i = selectedPiece.CurrentY + 1;
+                while(true)
+                {
+                    if(i >= 5)
+                        break;
+
+                    if (allowedMoves[selectedPiece.CurrentX, i])
+                    {
+                        destinationPos[1] = i;
+                        break;
+                    }
+                    i++;
+                }
+                break;
+
+            // Down
+            case "down":
+                i = selectedPiece.CurrentY - 1;
+                while(true)
+                {
+                    if(i < 0)
+                        break;
+
+                    if (allowedMoves[selectedPiece.CurrentX, i])
+                    {
+                        destinationPos[1] = i;
+                        break;
+                    }
+                    i--;
+                }
+                break;
+        }
+
+        return destinationPos;
+    }
+
+    private void SwitchTurn()
+    {
+        movingFlag = false;
+        selectedPiece = null;
+
+        // Check End Game
+        if (Pieces[2, 2])
+        {
+            EndGame();
+        }
+
+        isLightTurn = !isLightTurn;
+    }
 
     private void EndGame()
     {
