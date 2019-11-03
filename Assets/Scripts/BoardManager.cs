@@ -19,6 +19,8 @@ public class BoardManager : MonoBehaviour
     public List<GameObject> piecePrefabs;
     private List<GameObject> activePiece = new List<GameObject>();
 
+    public GameObject turnPanel;
+
     private Material previousMat;
     public Material selectedMat;
 
@@ -29,36 +31,89 @@ public class BoardManager : MonoBehaviour
     public bool isLightTurn = true;
 
     // Animation
+<<<<<<< Updated upstream
     public bool movingFlag = false;
     public Vector3 target;
     public Vector3 moveVector;
 
+=======
+    private const float MOVING_STEP = 0.1f;
+    private bool movingFlag = false;
+    private Vector3 target;
+    private Vector3 moveVector;
+    private Vector3 moveDistance;
+    private float panelRotateStep;
+
+
+    //==============================
+    //  Functions
+    //==============================
+>>>>>>> Stashed changes
     private void Start()
     {
         Instance = this;
         SpawnAllPieces();
+
+        UIManager.Instance.StartGameSetup();
     }
 
     private void Update()
     {
-        DrawSLIPESBoard();
+        DrawSLIPEBoard();
         UpdateSelection();
 
+        // タッチ確認
         Inputflick.Instance.Flick();
 
+<<<<<<< Updated upstream
         if (Input.GetMouseButtonDown(0) && !movingFlag)
         {
             if (selectionX >= 0 && selectionY >= 0)
             {
                 if (selectedPiece == null)
+=======
+        // タッチされた
+        if (direction != null) {
+
+            // タップだった
+            if (direction == "touch" && !movingFlag)
+            {
+                //ボード内のタッチ
+                if (selectionX >= 0 && selectionY >= 0)
+>>>>>>> Stashed changes
                 {
                     //Select the piece
                     SelectPiece(selectionX, selectionY);
                 }
+<<<<<<< Updated upstream
                 else
                 {
                     //Move the piece
                     MovePiece(selectionX, selectionY);
+=======
+
+                // 一度タッチしたらもう一度タッチするまでフリック受け付けない
+                touchingFlag = !touchingFlag;
+            }
+
+            // フリックだった
+            else if (direction != "touch" && !movingFlag && !touchingFlag)
+            {
+                float[] startPos = Inputflick.Instance.GettouchStartPos();
+
+                // フリック開始地点がボード内
+                if(startPos[0] >= 0 && startPos[1] >= 0)
+                {
+                    // フリック開始点のピースを選択
+                    SelectPiece((int)startPos[0], (int)startPos[1]);
+
+                    // 有効なピースを選択できた
+                    if(selectedPiece != null)
+                    {
+                        int[] destinationPos = GetDestination();
+                        MovePiece(destinationPos[0], destinationPos[1]);
+                    }
+>>>>>>> Stashed changes
                 }
             }
         }
@@ -79,7 +134,15 @@ public class BoardManager : MonoBehaviour
             }
             else
             {
+<<<<<<< Updated upstream
                 selectedPiece.transform.position += moveVector * -0.1f;
+=======
+                // Moving Piece
+                selectedPiece.transform.position += moveVector * MOVING_STEP;
+
+                // Rotate TurnPanel
+                turnPanel.transform.Rotate(0.0f, 0.0f, panelRotateStep);
+>>>>>>> Stashed changes
             }
         }
 
@@ -121,15 +184,20 @@ public class BoardManager : MonoBehaviour
 
         if (allowedMoves[x, y])
         {
+            // 選ばられたピースのあった場所を開ける
             Pieces[selectedPiece.CurrentX, selectedPiece.CurrentY] = null;
 
-            //selectedPiece.transform.position = GetTileCenter(x, y);
-            moveVector = (selectedPiece.transform.position - GetTileCenter(x, y)).normalized;
-            target = GetTileCenter(x, y);
-            movingFlag = true;
-
+            // データ上のピースの位置更新
             selectedPiece.SetPosition(x, y);
             Pieces[x, y] = selectedPiece;
+
+            // 移動アニメーション関連
+            target = GetTileCenter(x, y);                                           // ピースを動かす先の座標
+
+            moveDistance = target - selectedPiece.transform.position;
+            moveVector = moveDistance.normalized;                                   // ピースを動かす方向
+            panelRotateStep = 180.0f / moveDistance.magnitude * MOVING_STEP;
+            movingFlag = true;
 
         }
         else
@@ -146,7 +214,7 @@ public class BoardManager : MonoBehaviour
             return;
 
         RaycastHit hit;
-        if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 25.0f, LayerMask.GetMask("SLIPESPlane")))
+        if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 25.0f, LayerMask.GetMask("SLIPEPlane")))
         {
             //Debug.Log(hit.point);
             selectionX = (int)hit.point.x;
@@ -211,7 +279,7 @@ public class BoardManager : MonoBehaviour
         return origin;
     }
 
-    private void DrawSLIPESBoard()
+    private void DrawSLIPEBoard()
     {
         Vector3 widthLine = Vector3.right * 5;
         Vector3 heightLine = Vector3.forward * 5;
@@ -245,10 +313,12 @@ public class BoardManager : MonoBehaviour
 
     private void EndGame()
     {
-        if (isLightTurn)
-            Debug.Log("Light team wins");
-        else
-            Debug.Log("Dark team wins");
+        //if (isLightTurn)
+        //    Debug.Log("Light team wins");
+        //else
+        //    Debug.Log("Dark team wins");
+
+        UIManager.Instance.EndGameDisplay();
 
         foreach (GameObject go in activePiece)
             Destroy(go);
