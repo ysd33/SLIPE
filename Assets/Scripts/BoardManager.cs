@@ -13,8 +13,15 @@ public class BoardManager : MonoBehaviour
     private const float TILE_SIZE = 1.0f;
     private const float TILE_OFFSET = 0.5f;
 
+    private float mousePosX = -1;
+    private float mousePosY = -1;
     private int selectionX = -1;
     private int selectionY = -1;
+    public float[] Getselection()
+    {
+        float[] selection = { mousePosX, mousePosY };
+        return selection;
+    }
 
     public List<GameObject> piecePrefabs;
     private List<GameObject> activePiece = new List<GameObject>();
@@ -28,15 +35,12 @@ public class BoardManager : MonoBehaviour
     private float piecePositionY = -0.21f;
     private Quaternion orientation = Quaternion.Euler(-90, 0, 0);
 
+    // Controll
     public bool isLightTurn = true;
+    public bool touchingFlag = false;
+    string direction = null;
 
     // Animation
-<<<<<<< Updated upstream
-    public bool movingFlag = false;
-    public Vector3 target;
-    public Vector3 moveVector;
-
-=======
     private const float MOVING_STEP = 0.1f;
     private bool movingFlag = false;
     private Vector3 target;
@@ -48,7 +52,6 @@ public class BoardManager : MonoBehaviour
     //==============================
     //  Functions
     //==============================
->>>>>>> Stashed changes
     private void Start()
     {
         Instance = this;
@@ -64,14 +67,8 @@ public class BoardManager : MonoBehaviour
 
         // タッチ確認
         Inputflick.Instance.Flick();
+        direction = Inputflick.Instance.Getdirection();
 
-<<<<<<< Updated upstream
-        if (Input.GetMouseButtonDown(0) && !movingFlag)
-        {
-            if (selectionX >= 0 && selectionY >= 0)
-            {
-                if (selectedPiece == null)
-=======
         // タッチされた
         if (direction != null) {
 
@@ -80,18 +77,15 @@ public class BoardManager : MonoBehaviour
             {
                 //ボード内のタッチ
                 if (selectionX >= 0 && selectionY >= 0)
->>>>>>> Stashed changes
                 {
                     //Select the piece
                     SelectPiece(selectionX, selectionY);
                 }
-<<<<<<< Updated upstream
                 else
                 {
                     //Move the piece
                     MovePiece(selectionX, selectionY);
-=======
-
+                }
                 // 一度タッチしたらもう一度タッチするまでフリック受け付けない
                 touchingFlag = !touchingFlag;
             }
@@ -113,7 +107,6 @@ public class BoardManager : MonoBehaviour
                         int[] destinationPos = GetDestination();
                         MovePiece(destinationPos[0], destinationPos[1]);
                     }
->>>>>>> Stashed changes
                 }
             }
         }
@@ -121,28 +114,15 @@ public class BoardManager : MonoBehaviour
         {
             if(target == selectedPiece.transform.position)
             {
-                movingFlag = false;
-                selectedPiece = null;
-
-                // Check End Game
-                if (Pieces[2, 2])
-                {
-                    EndGame();
-                }
-
-                isLightTurn = !isLightTurn;
+                SwitchTurn();
             }
             else
             {
-<<<<<<< Updated upstream
-                selectedPiece.transform.position += moveVector * -0.1f;
-=======
                 // Moving Piece
                 selectedPiece.transform.position += moveVector * MOVING_STEP;
 
                 // Rotate TurnPanel
                 turnPanel.transform.Rotate(0.0f, 0.0f, panelRotateStep);
->>>>>>> Stashed changes
             }
         }
 
@@ -170,9 +150,7 @@ public class BoardManager : MonoBehaviour
         selectedPiece = Pieces[x, y];
 
         // Change Material
-        previousMat = selectedPiece.GetComponent<MeshRenderer>().material;
-        selectedMat.mainTexture = previousMat.mainTexture;
-        selectedPiece.GetComponent<MeshRenderer>().material = selectedMat;
+        SwitchSelectedMaterial();
 
         BoardHighlights.Instance.HighLightAllowedmoves(allowedMoves);
     }
@@ -217,11 +195,15 @@ public class BoardManager : MonoBehaviour
         if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 25.0f, LayerMask.GetMask("SLIPEPlane")))
         {
             //Debug.Log(hit.point);
+            mousePosX = hit.point.x;
+            mousePosY = hit.point.z;
             selectionX = (int)hit.point.x;
             selectionY = (int)hit.point.z;
         }
         else
         {
+            mousePosX = -1;
+            mousePosY = -1;
             selectionX = -1;
             selectionY = -1;
         }
@@ -310,6 +292,105 @@ public class BoardManager : MonoBehaviour
         }
     }
 
+    private void SwitchSelectedMaterial()
+    {
+        previousMat = selectedPiece.GetComponent<MeshRenderer>().material;
+        selectedMat.mainTexture = previousMat.mainTexture;
+        selectedPiece.GetComponent<MeshRenderer>().material = selectedMat;
+    }
+
+    private int[] GetDestination()
+    {
+        int i;
+        int[] destinationPos = { selectedPiece.CurrentX, selectedPiece.CurrentY };
+
+        switch (direction)
+        {
+            // Right
+            case "right":
+                i = selectedPiece.CurrentX + 1;
+                while (true)
+                {
+                    if (i >= 5)
+                        break;
+
+                    if (allowedMoves[i, selectedPiece.CurrentY])
+                    {
+                        destinationPos[0] = i;
+                        break;
+                    }
+                    i++;
+                }
+                break;
+
+            // Left
+            case "left":
+                i = selectedPiece.CurrentX - 1;
+                while (true)
+                {
+                    if (i < 0)
+                        break;
+
+                    if (allowedMoves[i, selectedPiece.CurrentY])
+                    {
+                        destinationPos[0] = i;
+                        break;
+                    }
+                    i--;
+                }
+                break;
+
+            // Up
+            case "up":
+                i = selectedPiece.CurrentY + 1;
+                while (true)
+                {
+                    if (i >= 5)
+                        break;
+
+                    if (allowedMoves[selectedPiece.CurrentX, i])
+                    {
+                        destinationPos[1] = i;
+                        break;
+                    }
+                    i++;
+                }
+                break;
+
+            // Down
+            case "down":
+                i = selectedPiece.CurrentY - 1;
+                while (true)
+                {
+                    if (i < 0)
+                        break;
+
+                    if (allowedMoves[selectedPiece.CurrentX, i])
+                    {
+                        destinationPos[1] = i;
+                        break;
+                    }
+                    i--;
+                }
+                break;
+        }
+
+        return destinationPos;
+    }
+
+    private void SwitchTurn()
+    {
+        movingFlag = false;
+        selectedPiece = null;
+
+        // Check End Game
+        if (Pieces[2, 2])
+        {
+            EndGame();
+        }
+
+        isLightTurn = !isLightTurn;
+    }
 
     private void EndGame()
     {
