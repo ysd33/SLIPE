@@ -6,9 +6,9 @@ public class Inputflick : MonoBehaviour
 {
     public static Inputflick Instance { set; get; }
 
-    private Vector3 touchStartPos;
-    private Vector3 touchEndPos;
-    public string Direction;
+    private float[] touchStartPos;
+    private float[] touchEndPos;
+    private string direction;
 
 
     public void Start()
@@ -16,55 +16,69 @@ public class Inputflick : MonoBehaviour
         Instance = this;
     }
 
+    public string Getdirection()
+    {
+        return direction;
+    }
+
+    public float[] GettouchStartPos()
+    {
+        return touchStartPos;
+    }
+
     public void Flick()
     {
+
+        direction = null;
         if (Input.GetKeyDown(KeyCode.Mouse0))
         {
-            touchStartPos = new Vector3(Input.mousePosition.x,
-                                        Input.mousePosition.y,
-                                        Input.mousePosition.z);
+            touchStartPos = BoardManager.Instance.Getselection();
         }
 
         if (Input.GetKeyUp(KeyCode.Mouse0))
         {
-            touchEndPos = new Vector3(Input.mousePosition.x,
-                                      Input.mousePosition.y,
-                                      Input.mousePosition.z);
+            touchEndPos = BoardManager.Instance.Getselection();
             GetDirection();
         }
     }
 
-    public void GetDirection()
+    private void GetDirection()
     {
-        float directionX = touchEndPos.x - touchStartPos.x;
-        float directionY = touchEndPos.y - touchStartPos.y;
+        float directionX = touchEndPos[0] - touchStartPos[0];
+        float directionY = touchEndPos[1] - touchStartPos[1];
 
         if (Mathf.Abs(directionY) < Mathf.Abs(directionX))
         {
-            if (30 < directionX)
+            if (0.1 < directionX)
             {
                 //右向きにフリック
-                Direction = "right";
+                direction = "right";
             }
-            else if (-30 > directionX)
+            else if (-0.1 > directionX)
             {
                 //左向きにフリック
-                Direction = "left";
+                direction = "left";
             }
         }
         else if (Mathf.Abs(directionX) < Mathf.Abs(directionY))
         {
-            if (30 < directionY) {
+            if (0.1 < directionY)
+            {
                 //上向きにフリック
-                Direction = "up";
-            } else if (-30 > directionY) {
-                //下向きのフリック
-                Direction = "down";
+                direction = "up";
             }
-        } else {
+            else if (-0.1 > directionY)
+            {
+                //下向きのフリック
+                direction = "down";
+            }
+        }
+        else
+        {
             //タッチを検出
-            Direction = "touch";
+            direction = "touch";
         }
 
+        //Debug.Log(direction);
     }
 }
